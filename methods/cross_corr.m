@@ -9,8 +9,9 @@
     parfor_progress(num_clusters_for_corr);
     avg_diff_array = zeros(num_clusters_for_corr,num_clusters_for_corr);
     half_matrix = triu(ones(num_clusters_for_corr,num_clusters_for_corr));
+    tic;
     parfor k=1:num_clusters_for_corr
-        cell1_data = spikes_by_bin(k, :);
+       
         for j=1:num_clusters
             if k==j
                 continue;
@@ -19,10 +20,14 @@
             if half_matrix(j,k) > 0
                continue;
             end
+            cell1_data = spikes_by_bin(k, :);
+            g = gpuDevice;
+            cell1_data = gpuArray(cell1_data);
             cell2_data = spikes_by_bin(j, :);
+            cell2_data = gpuArray(cell2_data);
             %compute cross-correlelogram
             [x_coeff, lag] = xcorr(cell1_data, cell2_data, lag_units, 'coeff');
-
+            %[x_coeff, lag] = xcorr(gpuArray(cell1_data), gpuArray(cell2_data), lag_units, 'coeff');
             % generate bootstrapped shuffled cell 2
 %             acor_diff = zeros(bootstrap_num,1);
 %             for i=1:bootstrap_num
@@ -58,10 +63,17 @@
         %     ylabel('R value');
         %     legend('Original Data', 'Shuffled Cell2 data');
         %     hold off;
+           % cell2_data = [];
+           %reset(g);
+           gpuDevice(1); %clear gpuDevice memory
+           wait(gpuDevice); %wait for gpuDevice to clear
         end
         parfor_progress;
+       % cell1_data = [];
+       
     end
     parfor_progress(0);
+    disp(toc);
     %save figure
 %     h = heatmap(avg_diff_array, active_clusters, active_clusters,[], 'Colorbar', 'true', 'ShowAllTicks', true);
 %     title('Mean Difference between XCorr & XCorr with Bootstrapped Cell 2');
